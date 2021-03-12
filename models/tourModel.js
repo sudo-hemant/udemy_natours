@@ -2,6 +2,8 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 
+// const { User } = require('./userModel');
+
 
 const tourSchema = mongoose.Schema({
   name: {
@@ -83,6 +85,40 @@ const tourSchema = mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  startLocation: {
+    // GeoJSON
+    type: {
+      type: String,
+      default: 'Point',
+      enum: ['Point'],
+    },
+    coordinates: [Number],
+    address: String,
+    description: String,
+  },
+  locations: [
+    {
+      type: {
+        type:String,
+        default: 'Point',
+        enum: ['Point'],
+      },
+      coordinates: [Number],
+      address: String,
+      description: String,
+      day: Number,
+      
+    }
+  ],
+  guides: [
+    {
+      type: mongoose.Schema.ObjectId,
+      // we don't need to import the User for referencing
+      ref: 'user',
+    }
+  ]
+
+  
 }, {
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
@@ -98,6 +134,14 @@ tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7
 })
 
+// TODO:  HOW VIRTUAL POPULATE WORKS BEHING THE SCENE
+// VIRTUAL POPULATE
+tourSchema.virtual('reviews', {
+  ref: 'review',
+  foreignField: 'tour',
+  localField: '_id'
+})
+
 // ----------------------------------------------------------------------------------------
 // DOCUMENT MIDDLEWARE : run before .save() and .create() but not on insertMany() etc
 
@@ -105,17 +149,28 @@ tourSchema.pre('save', function (next) {
   // THIS WILL POINT TO THE DOCUMENT WE ARE GOING TO SAVE
   this.slug = slugify(this.name, { lower: true });
   next();
-})
+});
 
-tourSchema.pre('save', function (next) {
-  console.log('ready to save documnt');
-  next()
-})
+// this if for embedding document
+// tourSchema.pre('save', async function (next) {
+//   const guidesPromises = this.guides.map(async guide_id => {
+//     return await User.findById(guide_id);
+//   });
+//   this.guides = await Promise.all(guidesPromises);
 
-tourSchema.post('save', function (doc, next) {
-  console.log('document saved');
-  next();
-})
+//   next();
+// })
+
+
+// tourSchema.pre('save', function (next) {
+//   console.log('ready to save documnt');
+//   next()
+// })
+
+// tourSchema.post('save', function (doc, next) {
+//   console.log('document saved');
+//   next();
+// })
 
 // -----------------------------------------------------------------------------------------
 // QUERY MIDDLEWARE
@@ -130,13 +185,25 @@ tourSchema.pre(/^find/, function (next) {
   // to get the time it took to execure query
   this.start = Date.now();
   next();
-})
+});
+
+
+tourSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: 'guides',
+    select: '-__v -passwordChangedAt',
+  })
+
+  next();
+});
+
 
 tourSchema.post(/^find/, function (docs, next) {
   // console.log(docs, 'docs');
   console.log(Date.now() - this.start, 'ms time took to execute query');
   next();
-})
+});
+
 
 // -----------------------------------------------------------------------------------------
 // AGGRETATION MIDDLEWARE

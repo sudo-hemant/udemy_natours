@@ -40,7 +40,13 @@ const getAllTours = catchAsync(async (req, res, next) => {
 
 
 const getTour = catchAsync(async (req, res, next) => {
-    const tour = await Tour.findById(req.params.id);
+    const tour = await Tour.findById(req.params.id).populate('reviews');
+    // we have made a query middleware for this
+    // .populate({
+    //     path: 'guides',
+    //     // to exclude or include particular fields
+    //     select: '-__v -passwordChangedAt',
+    // });
 
     if (!tour) {
         return next(new AppError('No tour found with that ID', 404));

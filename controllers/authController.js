@@ -1,6 +1,6 @@
-const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { promisify } = require('util');
 
 const { User } = require('../models/userModel');
 const { catchAsync } = require('../utils/catchAsync');
@@ -13,6 +13,27 @@ const signToken = id => {
     return jwt.sign({ id: id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
 }
 
+const createSendToken = (user, statusCode, res) => {
+    const token = signToken(user._id);
+
+    res.cookie('jwt', token, {
+        expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000),
+        // for https only
+        // secure: true,
+        httpOnly: true,
+    })
+    
+    user.password = undefined;
+
+    res.status(statusCode).json({
+        status: 'success',
+        token,
+        data: {
+            user
+        }
+    })
+};
+
 
 const signup = catchAsync(async (req, res, next) => {
     // NOTE:    THIS HAS VERY SERIOUS SECURITY FLAW, BCOS ANYONE CAN REGISTER AS ADMIN
@@ -22,15 +43,16 @@ const signup = catchAsync(async (req, res, next) => {
     const { name, email, role, password, passwordConfirm } = req.body;
     const newUser = await User.create({ name, email, role, password, passwordConfirm });
 
-    const token = signToken(newUser._id)
+    createSendToken(newUser, 201, res);
 
-    res.status(201).json({
-        status: 'success',
-        token,
-        data: {
-            user: newUser,
-        },
-    });
+    // const token = signToken(newUser._id)
+    // res.status(201).json({
+    //     status: 'success',
+    //     token,
+    //     data: {
+    //         user: newUser,
+    //     },
+    // });
 });
 
 
@@ -48,12 +70,13 @@ const login = catchAsync(async (req, res, next) => {
         return next(new AppError('Incorrect email or password', 401))
     }
 
-    const token = signToken(user._id);
+    createSendToken(user, 200, res);
 
-    res.status(200).json({
-        status: 'success',
-        token,
-    });
+    // const token = signToken(user._id);
+    // res.status(200).json({
+    //     status: 'success',
+    //     token,
+    // });
 });
 
 
@@ -126,12 +149,13 @@ const resetPassword = catchAsync(async (req, res, next) => {
     //      we have done it in middleware
 
     // 4) log the user in 
-    const token = signToken(user._id);
+    createSendToken(user, 200, res);
 
-    res.status(200).json({
-        status: 'success',
-        token,
-    });
+    // const token = signToken(user._id);
+    // res.status(200).json({
+    //     status: 'success',
+    //     token,
+    // });
 });
 
 
@@ -152,20 +176,14 @@ const updatePassword = catchAsync(async (req, res, next) => {
     await user.save();
 
     // 4) log user in, send JWT Token back
-    const token = signToken(user._id);
+    createSendToken(user, 200, res);
 
-    res.status(200).json({
-        status: 'success',
-        token,
-    })
+    // const token = signToken(user._id);
+    // res.status(200).json({
+    //     status: 'success',
+    //     token,
+    // })
 });
-
-
-
-
-
-
-
 
 
 // NOTE:    middleware to check whether the user is logged in or not
@@ -200,7 +218,7 @@ const protect = catchAsync(async (req, res, next) => {
 
     // GRANT ACCESS TO PROTECTED ROUTE 
     req.user = freshUser;
-    console.log(freshUser)
+
     next();
 });
 
@@ -217,13 +235,6 @@ const restrictTo = (...roles) => {
         next();
     }
 }
-
-
-
-
-
-
-
 
 
 module.exports = {

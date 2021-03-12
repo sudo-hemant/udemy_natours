@@ -58,6 +58,11 @@ const userSchema = mongoose.Schema({
     passwordResetExpires: {
         type: Date,
     },
+    active: {
+        type: Boolean,
+        default: true,
+        select: false,
+    }
 });
 
 
@@ -83,11 +88,22 @@ userSchema.pre('save', async function (next) {
 // we check if the password is not modified and the document is not being created for the first time,
 // if it is, then we don't update the passwordChangedAt property 
 // else we update the passwordChangedAt property 
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function (next) {
     if (!this.isModified('password') || this.isNew) {
         return next();
-    } 
+    }
     this.passwordChangedAt = Date.now() - 1000;
+
+    next();
+});
+
+
+
+// NOTE: QUERY MIDDLEWARE
+
+// to filter the user based on active property
+userSchema.pre(/^find/, function (next) {
+    this.find({ active: { $ne: false } });
 
     next();
 });
@@ -108,7 +124,7 @@ userSchema.methods.correctPassword = async function (candidatePassword, userPass
 userSchema.methods.changedPasswordAfter = function (JWTTimeStamp) {
     if (this.passwordChangedAt) {
         const changedTimeStamp = +(this.passwordChangedAt.getTime() / 1000);
-        
+
         return JWTTimeStamp < changedTimeStamp;
     }
 
