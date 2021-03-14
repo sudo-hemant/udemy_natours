@@ -1,42 +1,34 @@
 
 const { Review } = require('../models/reviewModel');
-const { AppError } = require('../utils/appError');
-const { catchAsync } = require('../utils/catchAsync');
+const factory = require('./handlerFactory');
 
 
-const getAllReviews = catchAsync( async (req, res, next) => {
-    const reviews = await Review.find();
 
-    res.status(200).json({
-        status: 'success',
-        results: reviews.length,
-        data: {
-            reviews
-        }
-    })
-
-});
-
-const createReview = catchAsync(async (req, res, next) => {
+// MIDDLEWARE USED WHILE CREATING REVIEW
+const setTourUserIds = (req, res, next) => {
     if (!req.body.tour) {
         req.body.tour = req.params.tourId;
     }
     if (!req.body.user) {
         // WE ARE GETTING req.user FROM THE PROTECT MIDDLEWARE
-        req.body.user = req.user.id;
+        req.body.createdBy = req.user.id;
     }
-    const newReview = await Review.create(req.body);
+    next();
+};
 
-    res.status(201).json({
-        status: 'success',
-        data: {
-            review: newReview,
-        }
-    })
-});
+
+const getReview = factory.getOne(Review);
+const getAllReviews = factory.getAll(Review);
+const createReview = factory.createOne(Review);
+const updateReview = factory.updateOne(Review);
+const deleteReview = factory.deleteOne(Review);
 
 
 module.exports = {
-    getAllReviews, 
+    setTourUserIds,
+    getReview,
+    getAllReviews,
     createReview,
+    updateReview,
+    deleteReview,
 }

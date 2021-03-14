@@ -1,7 +1,7 @@
 const { User } = require('../models/userModel');
 const { catchAsync } = require('../utils/catchAsync');
 const { AppError } = require('../utils/appError');
-
+const factory = require('./handlerFactory');
 
 
 const filterObj = (obj, ...allowedFields) => {
@@ -15,6 +15,13 @@ const filterObj = (obj, ...allowedFields) => {
 
     return filteredBody;
 };
+
+// MIDDLEWARE - USED WHEN WE WANT USER TO RETRIEVE ITS OWN DATA
+//              SO WE PRETEND THAT THE ID IS COMING FROM THE URL
+const getMe = (req, res, next) => {
+    req.params.id = req.user.id;
+    next();
+}
 
 
 const updateMe = catchAsync(async (req, res, next) => {
@@ -45,6 +52,8 @@ const updateMe = catchAsync(async (req, res, next) => {
 });
 
 
+// IF USERS DELETES ITSELF, THEN IT LL ONLY MARK IT AS INACTIVE, NOT DELETE THE DATA
+// INSTEAD ONLY ADMINs CAN DELETE THE DATA, THAT FUNCTION IS WRITTEN BELOW
 const deleteMe = catchAsync( async (req, res, next) => {
     await User.findByIdAndUpdate(req.user.id, { active: false });
 
@@ -55,47 +64,15 @@ const deleteMe = catchAsync( async (req, res, next) => {
 });
 
 
-const getAllUsers = catchAsync(async (req, res, next) => {
-    const users = await User.find();
-
-    res.status(200).json({
-        status: 'error',
-        results: users.length,
-        data: {
-            users
-        },
-    });
-});
-
-
-
-
+const getUser = factory.getOne(User);
+const getAllUsers = factory.getAll(User);
+const updateUser = factory.updateOne(User);  // DO NOT UPDATE PASSWORDS WITH THAT
+const deleteUser = factory.deleteOne(User);  // ONLY ADMIN CAN HAVE ACCESS TO THIS FEATURE
 
 const createUser = (req, res) => {
     res.status(500).json({
         status: 'error',
-        message: 'this route is incomplete !',
-    });
-};
-
-const getUser = (req, res) => {
-    res.status(500).json({
-        status: 'error',
-        message: 'this route is incomplete !',
-    });
-};
-
-const updateUser = (req, res) => {
-    res.status(500).json({
-        status: 'error',
-        message: 'this route is incomplete !',
-    });
-};
-
-const deleteUser = (req, res) => {
-    res.status(500).json({
-        status: 'error',
-        message: 'this route is incomplete !',
+        message: 'this route is not define, plz use signup instead !',
     });
 };
 
@@ -103,10 +80,11 @@ const deleteUser = (req, res) => {
 module.exports = {
     updateMe,
     deleteMe,
-
-    getAllUsers,
-    createUser,
+    
+    getMe,
     getUser,
+    getAllUsers,
     updateUser,
     deleteUser,
+    createUser,
 };

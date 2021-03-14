@@ -1,7 +1,8 @@
 const { Tour } = require('../models/tourModel');
-const { APIFeatures } = require('../utils/apiFeatures');
 const { catchAsync } = require('../utils/catchAsync');
-const { AppError } = require('../utils/appError');
+const factory = require('./handlerFactory');
+
+
 
 
 // middleware to get top 5 cheap routes
@@ -11,107 +12,6 @@ const aliasTopTours = (req, res, next) => {
     req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
     next();
 }
-
-
-const getAllTours = catchAsync(async (req, res, next) => {
-    // EXECUTE QUERY
-
-    // TODO:    DIDN'T UNDERSTAND THE CONSTURCTOR FUNCTION
-    const features = new APIFeatures(Tour.find(), req.query).filter().sort()
-        .limitFields()
-        .paginate();
-    const tours = await features.query;
-
-    // NOTE: BY THIS METHOD WE WON'T BE ABLE TO EXECUTE FILTER, PAGINATION ETC, BCOS IT IMMEDIATELY 
-    // PERFROM QUERY ON DB, INSTEAD WE FIRST CHAIN QUERY AND THEN PERFORM THE QUERY IN DB
-    // const tours = await Tour.find();
-
-    // NOTE: OTHER way to chain query
-    // const tours = await Tour.find().where('duration').equals(5).where('difficulty').equals('easy');
-
-    res.status(200).json({
-        status: 'success',
-        results: tours.length,
-        data: {
-            tours,
-        },
-    });
-});
-
-
-const getTour = catchAsync(async (req, res, next) => {
-    const tour = await Tour.findById(req.params.id).populate('reviews');
-    // we have made a query middleware for this
-    // .populate({
-    //     path: 'guides',
-    //     // to exclude or include particular fields
-    //     select: '-__v -passwordChangedAt',
-    // });
-
-    if (!tour) {
-        return next(new AppError('No tour found with that ID', 404));
-    };
-
-    res.status(200).json({
-        status: 'success',
-        data: {
-            tour,
-        },
-    });
-});
-
-
-const createTour = catchAsync(async (req, res, next) => {
-    const newTour = await Tour.create(req.body);
-
-    res.status(201).json({
-        status: 'success',
-        data: {
-            tour: newTour
-        },
-    });
-});
-
-
-// NOTE: we are using patch function, because in this case we will only need to send the data 
-// which we want to update not the whole data.
-const updateTour = catchAsync(async (req, res, next) => {
-    const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-        // NOTE: to get the updated data from db, which we ll send back to user
-        new: true,
-
-        // NOTE: to run validator again when we are trying to update a particular value
-        runValidators: true
-    });
-
-    if (!tour) {
-        return next(new AppError('No tour found with that ID', 404));
-    };
-
-    res.status(201).json({
-        status: 'success',
-        data: {
-            tour
-        },
-    });
-});
-
-
-// FIXME: ITS DELETING DATA FROM DB, BUT SENDING THE FAILED STATUS
-const deleteTour = catchAsync(async (req, res, next) => {
-    const tour = await Tour.findByIdAndDelete(req.params.id);
-
-    if (!tour) {
-        return next(new AppError('No tour found with that ID', 404));
-    };
-
-    res.status(204).json({
-        status: 'success',
-        data: {
-            message: 'successfully deleted the tour '
-        },
-    });
-});
 
 
 // NOTE: AGGREGATION PIPELING
@@ -147,7 +47,6 @@ const getTourStats = catchAsync(async (req, res, next) => {
     })
 
 });
-
 
 const getMonthlyPlan = catchAsync(async (req, res, next) => {
     const { year } = req.params
@@ -200,15 +99,25 @@ const getMonthlyPlan = catchAsync(async (req, res, next) => {
 });
 
 
+
+const getTour = factory.getOne(Tour, { path: 'reviews' });
+const getAllTours = factory.getAll(Tour);
+const createTour = factory.createOne(Tour);
+const updateTour = factory.updateOne(Tour);
+
+// FIXME: ITS DELETING DATA FROM DB, BUT SENDING THE FAILED STATUS
+const deleteTour = factory.deleteOne(Tour);
+
+
 module.exports = {
-    getAllTours,
+    aliasTopTours,
+    getTourStats,
+    getMonthlyPlan,
     getTour,
+    getAllTours,
     createTour,
     updateTour,
     deleteTour,
-    aliasTopTours,
-    getTourStats,
-    getMonthlyPlan
 };
 
 

@@ -13,7 +13,7 @@ const tourSchema = mongoose.Schema({
     trim: true,
     maxlength: [50, 'A tour must have less than 41 characters'],
     minlength: [10, 'A tour must have more than 10 characters'],
-    
+
     // FEATURES PROVIDED BY VALIDATOR LIBRARY
     // validate: validator.isAlpha
   },
@@ -32,7 +32,7 @@ const tourSchema = mongoose.Schema({
     requried: [true, 'A tour must have difficulty'],
     // this is only for strings
     enum: {
-      values: ['easy', 'medium', 'hard'],
+      values: ['easy', 'medium', 'difficult'],
       message: 'difficulty must be either: easy, medium, difficult',
     },
   },
@@ -41,6 +41,8 @@ const tourSchema = mongoose.Schema({
     default: 4.5,
     min: [1, 'rating must be above 1'],
     max: [5, 'rating must be below 5'],
+    // going to run each time a value is going to be updated
+    set: val => Math.round(val * 10) / 10,
   },
   ratingsQuantity: {
     type: Number,
@@ -53,7 +55,7 @@ const tourSchema = mongoose.Schema({
   priceDiscount: {
     type: Number,
     validate: {
-      validator: function(val) {
+      validator: function (val) {
         // NOTE -  inside validator this is only going to point to the current doc while creating
         // now when updating
         return val < this.price;
@@ -99,7 +101,7 @@ const tourSchema = mongoose.Schema({
   locations: [
     {
       type: {
-        type:String,
+        type: String,
         default: 'Point',
         enum: ['Point'],
       },
@@ -107,7 +109,7 @@ const tourSchema = mongoose.Schema({
       address: String,
       description: String,
       day: Number,
-      
+
     }
   ],
   guides: [
@@ -118,15 +120,16 @@ const tourSchema = mongoose.Schema({
     }
   ]
 
-  
+
 }, {
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
 });
 
 
-
-
+// COMPOUND INDEXING
+tourSchema.index({ price: 1, ratingsAverage: -1 });
+tourSchema.index({ slug: 1 });
 
 // ----------------------------------------------------------------------------------------
 // VIRTUAL PROPERTY
