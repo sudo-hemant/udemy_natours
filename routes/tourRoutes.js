@@ -3,6 +3,8 @@ const express = require('express');
 const {
     getAllTours,
     createTour,
+    getToursWithin,
+    getDistances,
     getTour,
     updateTour,
     deleteTour,
@@ -15,6 +17,7 @@ const {
     restrictTo,
 } = require('../controllers/authController')
 const reviewRouter = require('../routes/reviewRoutes');
+const { get } = require('../routes/reviewRoutes');
 
 const router = express.Router();
 
@@ -36,6 +39,16 @@ router
 router
     .route('/monthly-plan/:year')
     .get(protect, restrictTo('admin', 'lead-guide', 'guide'), getMonthlyPlan)
+
+
+// to find the tours within particular radius
+router
+    .route('/tours-within/:distance/center/:latlng/unit/:unit')
+    .get(getToursWithin)
+
+router
+    .route('/distances/:latlng/unit/:unit')
+    .get(getDistances)
 
 
 router

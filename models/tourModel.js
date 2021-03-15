@@ -130,6 +130,8 @@ const tourSchema = mongoose.Schema({
 // COMPOUND INDEXING
 tourSchema.index({ price: 1, ratingsAverage: -1 });
 tourSchema.index({ slug: 1 });
+// for helping in finding the tours within given radius
+tourSchema.index({ startLocation: '2dsphere' });
 
 // ----------------------------------------------------------------------------------------
 // VIRTUAL PROPERTY
@@ -211,13 +213,13 @@ tourSchema.post(/^find/, function (docs, next) {
 // -----------------------------------------------------------------------------------------
 // AGGRETATION MIDDLEWARE
 
-tourSchema.pre('aggregate', function (next) {
-  this.pipeline().unshift({ $match: { secretTour: { $ne: true } } })
+// tourSchema.pre('aggregate', function (next) {
+//   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } })
 
-  console.log(this);
+//   console.log(this);
 
-  next();
-})
+//   next();
+// })
 
 // -----------------------------------------------------------------------------------------
 

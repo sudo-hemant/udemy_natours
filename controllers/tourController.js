@@ -1,8 +1,7 @@
 const { Tour } = require('../models/tourModel');
+const { AppError } = require('../utils/appError');
 const { catchAsync } = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
-
-
 
 
 // middleware to get top 5 cheap routes
@@ -47,6 +46,7 @@ const getTourStats = catchAsync(async (req, res, next) => {
     })
 
 });
+
 
 const getMonthlyPlan = catchAsync(async (req, res, next) => {
     const { year } = req.params
@@ -99,6 +99,57 @@ const getMonthlyPlan = catchAsync(async (req, res, next) => {
 });
 
 
+// to find the tours within particular radius
+const getToursWithin = catchAsync(async (req, res, next) => {
+    const { distance, latlng, unit } = req.params;
+    const [latitude, longitude] = latlng.split(',');
+
+    // const radius = unit === 'mi' ? distance / 3962.2 : distance / 6378.1;
+    const radius = distance / (unit === 'mi' ? 3962.2 : 6378.1);
+
+    if (!latitude || !longitude) {
+        next(new AppError('please provide latitude & longitude in format lat,lng', 400));
+    }
+
+    const tours = await Tour.find({ startLocation: { $geoWithin: { $centerSphere: [[longitude, latitude], radius] } } })
+
+    res.status(200).json({
+        status: 'success',
+        results: tours.length,
+        data: {
+            data: tours,
+        }
+    });
+});
+
+
+const getDistances = catchAsync(async (req, res, next) => {
+    const { latlng, unit } = req.params;
+    const [latitude, longitude] = latlng.split(',');
+
+    if (!latitude || !longitude) {
+        next(new AppError('please provide latitude & longitude in format lat, lng', 400));
+    }
+    const distances = await Tour.aggregate([
+        {
+            $geoNear: {
+                near: {
+                    type: 'Point',
+                    coordinates: [longitude * 1, latitude * 1]
+                }, 
+                distanceField: 'distance',
+            }
+        }
+    ]);
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            data: tours,
+        }
+    })
+});
+
 
 const getTour = factory.getOne(Tour, { path: 'reviews' });
 const getAllTours = factory.getAll(Tour);
@@ -113,6 +164,8 @@ module.exports = {
     aliasTopTours,
     getTourStats,
     getMonthlyPlan,
+    getToursWithin,
+    getDistances,
     getTour,
     getAllTours,
     createTour,
